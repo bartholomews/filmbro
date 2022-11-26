@@ -45,6 +45,7 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
+// TODO -> "mubi-to-letterboxd-lists" cmd (https://dev.to/divrhino/building-an-interactive-cli-app-with-go-cobra-promptui-346n)
 func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,

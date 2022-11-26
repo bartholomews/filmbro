@@ -20,12 +20,10 @@ func getRequest(url string) *http.Response {
 }
 
 func Go() {
-	res := getRequest(lists())
-	var userListsResponse UserLists
-
-	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&userListsResponse))
-
-	var userLists = userListsResponse.Lists
+	var user = getUser()
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+	fmt.Printf("Hello %s\n", user.Name)
+	var userLists = getUserLists()
 	fmt.Printf("I found %d Mubi lists:\n", len(userLists))
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 	for _, list := range userLists {
@@ -33,10 +31,21 @@ func Go() {
 	}
 }
 
-var baseUri = "https://api.mubi.com/v3"
+func userEndpoint() string {
+	return "https://api.mubi.com/v3/users/" + strconv.Itoa(flags.MubiUserId)
+}
 
-func lists() string {
-	var req = baseUri + "/users/" + strconv.Itoa(flags.MubiUserId) + "/lists"
-	fmt.Printf("GET request to Mubi: [%s]\n", req)
-	return req
+func getUser() User {
+	res := getRequest(userEndpoint())
+	var user User
+	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&user))
+	return user
+}
+
+func getUserLists() []List {
+	var endpoint = fmt.Sprintf("%s/lists", userEndpoint())
+	res := getRequest(endpoint)
+	var userListsResponse UserLists
+	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&userListsResponse))
+	return userListsResponse.Lists
 }
