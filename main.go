@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 Federico Bartolomei filmbro@bartholomews.io
-
 */
 package main
 

@@ -5,33 +5,44 @@ Copyright © 2022 Federico Bartolomei filmbro@bartholomews.io
 package cmd
 
 import (
-	"os"
-
+	"github.com/bartholomews/filmbro/flags"
+	"github.com/bartholomews/filmbro/mubi"
 	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
+	// https://github.com/spf13/cobra-cli
 	Use:   "filmbro",
 	Short: "Mubi / Letterboxd utils",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `
+    ___ _ _        _
+   / __|_) |      | |
+ _| |__ _| | ____ | |__   ____ ___
+(_   __) | ||    \|  _ \ / ___) _ \
+  | |  | | || | | | |_) ) |  | |_| |
+  |_|  |_|\_)_|_|_|____/|_|   \___/
+-------------------------------------------------------------------
+`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	//Run: func(cmd *cobra.Command, args []string) {
+	//	fmt.Println("Available commands: <list>")
+	//},
+}
+
+var listCmd = &cobra.Command{
+	Use:   "lists",
+	Short: "Show mubi lists",
+	Run: func(cmd *cobra.Command, args []string) {
+		mubi.Go()
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+	cobra.CheckErr(rootCmd.Execute())
 }
 
 func init() {
@@ -41,7 +52,12 @@ func init() {
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.filmbro.yaml)")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.AddCommand(listCmd)
+	listCmd.PersistentFlags().IntVar(&flags.MubiUserId, "user", -1, "MUBI user id")
+	listCmd.PersistentFlags().StringVar(&flags.MubiUserCountry, "country", "GB", "Country code")
+	//err := listCmd.MarkFlagRequired("user")
+	//if err != nil {
+	//	fmt.Printf("Input error: [%s]", err)
+	//	os.Exit(1)
+	//}
 }
