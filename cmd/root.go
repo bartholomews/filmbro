@@ -10,6 +10,7 @@ import (
 	"github.com/bartholomews/filmbro/letterboxd"
 	"github.com/bartholomews/filmbro/mubi"
 	"github.com/spf13/cobra"
+	"os"
 	"regexp"
 )
 
@@ -35,7 +36,7 @@ var rootCmd = &cobra.Command{
 }
 
 var mubiDiaryToLetterboxdCmd = &cobra.Command{
-	Use:   "mubi-diary-to-letterboxd",
+	Use:   "mubi-diary-migrate",
 	Short: "Create a Letterboxd csv importer file with Diary entries from Mubi lists with titles matching 'yyyy/mm'",
 	Run: func(cmd *cobra.Command, args []string) {
 		flags.MubiUserId = promptInt(promptContent{
@@ -59,30 +60,32 @@ var mubiDiaryToLetterboxdCmd = &cobra.Command{
 		fmt.Printf("Found %d Mubi lists for user [%s]\n", len(lists), user.Name)
 		fmt.Printf("Found %d 'Diary lists'\n", len(diaryLists))
 
-		if len(diaryLists) > 0 {
-
-			fmt.Println("Retrieving all user ratings...")
-			ratingsLookup := mubi.GetAllRatingsForUser()
-			fmt.Printf("Retrieved %d user ratings\n", len(ratingsLookup))
-
-			for _, diaryList := range diaryLists {
-				watchedDate := diaryList.Title[0:4] + "-" + diaryList.Title[5:7] + "-01"
-				filmsForList := mubi.FilmsInList(diaryList)
-				for _, film := range filmsForList {
-					var rating *int
-					var maybeRating, hasRating = ratingsLookup[film.Id]
-					if hasRating {
-						rating = &maybeRating
-					}
-					diaryEntries = append(diaryEntries, mubi.DiaryEntry{
-						Film: film, WatchedDate: watchedDate, Rating: rating,
-					})
-				}
-			}
-
-			fmt.Println(diaryEntries)
-			letterboxd.CreateCsvImport(diaryEntries)
+		if len(diaryLists) == 0 {
+			fmt.Println("In order to parse Mubi lists to Diary entries, list titles should be in the form 'yyyy/mm'")
+			os.Exit(0)
 		}
+
+		fmt.Println("Retrieving all user ratings...")
+		ratingsLookup := mubi.GetAllRatingsForUser()
+		fmt.Printf("Retrieved %d user ratings\n", len(ratingsLookup))
+
+		for _, diaryList := range diaryLists {
+			watchedDate := diaryList.Title[0:4] + "-" + diaryList.Title[5:7] + "-01"
+			filmsForList := mubi.FilmsInList(diaryList)
+			for _, film := range filmsForList {
+				var rating *int
+				var maybeRating, hasRating = ratingsLookup[film.Id]
+				if hasRating {
+					rating = &maybeRating
+				}
+				diaryEntries = append(diaryEntries, mubi.DiaryEntry{
+					Film: film, WatchedDate: watchedDate, Rating: rating,
+				})
+			}
+		}
+
+		filename := letterboxd.CreateCsvImport(diaryEntries)
+		fmt.Printf("All done, go to [https://letterboxd.com/import] to import [%s]", filename)
 	},
 }
 

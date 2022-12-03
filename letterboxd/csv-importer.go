@@ -9,7 +9,7 @@ import (
 )
 
 // CreateCsvImport - see https://letterboxd.com/about/importing-data
-func CreateCsvImport(entries []mubi.DiaryEntry) {
+func CreateCsvImport(entries []mubi.DiaryEntry) string {
 	// create a file
 	file, err := os.Create("letterboxd-diary-import.csv")
 	if err != nil {
@@ -42,4 +42,5 @@ func CreateCsvImport(entries []mubi.DiaryEntry) {
 	_ = writer.WriteAll(rows)
 
 	defer writer.Flush()
+	return file.Name()
 }

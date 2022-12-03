@@ -7,8 +7,8 @@ type Metadata struct {
 }
 
 type MetaCursor struct {
-	TotalCount int  `json:"total_count"`
-	NextCursor *int `json:"next_cursor"`
+	TotalCount int `json:"total_count"`
+	NextCursor int `json:"next_cursor"`
 }
 
 type User struct {

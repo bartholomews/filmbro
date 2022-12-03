@@ -42,7 +42,6 @@ func GetAllRatingsForUser() RatingsLookup {
 		var userRatingsResponse UserRatings
 
 		err := json.NewDecoder(res.Body).Decode(&userRatingsResponse)
-		fmt.Println(userRatingsResponse)
 		if err != nil {
 			fmt.Printf("Something went wrong while getting ratings: [%s]", err)
 			os.Exit(1)
@@ -51,21 +50,17 @@ func GetAllRatingsForUser() RatingsLookup {
 		for _, rating := range userRatingsResponse.Ratings {
 			ratingsLookup[rating.FilmId] = rating.Stars
 		}
-		fmt.Printf("Got [%d] results\n", len(userRatingsResponse.Ratings))
-		fmt.Printf("RatingsLookup is now [%d]\n", len(ratingsLookup))
 		return userRatingsResponse
 	}
 
 	var cursorParam = ""
 	for {
-		var endpoint = fmt.Sprintf("%s/ratings?per_page=25%s", userEndpoint(), cursorParam)
+		var endpoint = fmt.Sprintf("%s/ratings?per_page=100%s", userEndpoint(), cursorParam)
 		rating := getRatings(endpoint)
-		// FIXME[FB] Find out why the second call is always empty
-		//  The cursor from first call is suspiciously large (e.g. 824636555976 vs from ui is like 24836661)
-		if rating.Meta.NextCursor == nil {
+		fmt.Printf("Total ratings accumulated so far: [%d]\n", len(ratingsLookup))
+		if rating.Meta.NextCursor == 0 {
 			break
 		}
-		fmt.Printf("Next cursor is [%d]\n", rating.Meta.NextCursor)
 		cursorParam = fmt.Sprintf("&before=%d", rating.Meta.NextCursor)
 	}
 
