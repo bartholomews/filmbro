@@ -19,16 +19,24 @@ func getRequest(url string) *http.Response {
 	return res
 }
 
-func Go() {
+func Lists() []List {
 	var user = getUser()
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	fmt.Printf("Hello %s\n", user.Name)
-	var userLists = getUserLists()
-	fmt.Printf("I found %d Mubi lists:\n", len(userLists))
+	var userListsResponse = getUserLists()
+	fmt.Printf("I found %d Mubi lists for %s:\n", userListsResponse.Meta.TotalCount, user.Name)
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	for _, list := range userLists {
-		fmt.Printf("[%d] %s\n", list.Id+1, list.Title)
+	//for i, list := range userListsResponse.Lists {
+	//	fmt.Printf("%02d. %s\n", i + 1, list.Title)
+	//}
+	return userListsResponse.Lists
+}
+
+func FilmsInList(list List) []Film {
+	var films []Film
+	for _, film := range list.FilmIds {
+		films = append(films, getFilm(film))
 	}
+	return films
 }
 
 func userEndpoint() string {
@@ -42,10 +50,17 @@ func getUser() User {
 	return user
 }
 
-func getUserLists() []List {
-	var endpoint = fmt.Sprintf("%s/lists", userEndpoint())
+func getFilm(id int) Film {
+	res := getRequest("https://api.mubi.com/v3/films/" + strconv.Itoa(id))
+	var filmResponse Film
+	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&filmResponse))
+	return filmResponse
+}
+
+func getUserLists() UserLists {
+	var endpoint = fmt.Sprintf("%s/lists?per_page=100", userEndpoint())
 	res := getRequest(endpoint)
 	var userListsResponse UserLists
 	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&userListsResponse))
-	return userListsResponse.Lists
+	return userListsResponse
 }

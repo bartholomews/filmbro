@@ -5,9 +5,13 @@ Copyright © 2022 Federico Bartolomei filmbro@bartholomews.io
 package cmd
 
 import (
+	"fmt"
 	"github.com/bartholomews/filmbro/flags"
 	"github.com/bartholomews/filmbro/mubi"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"os"
+	"regexp"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -35,7 +39,38 @@ var listCmd = &cobra.Command{
 	Use:   "lists",
 	Short: "Show mubi lists",
 	Run: func(cmd *cobra.Command, args []string) {
-		mubi.Go()
+		flags.MubiUserId = promptInt(promptContent{
+			"Invalid entry: you can find it in the browser console after you login.",
+			"Please provide your Mubi user id",
+		})
+		lists := mubi.Lists()
+		var listStr []string
+		for _, e := range lists {
+			listStr = append(listStr, e.Title)
+		}
+
+		pr := promptui.Select{
+			Label: "Please select a list of the form 'yyyy/mm' in order to create a Letterboxd importer for Diary entries:",
+			Items: listStr,
+		}
+
+		index, _, err := pr.Run()
+		cobra.CheckErr(err)
+
+		selectedList := lists[index]
+		matchRegex, _ := regexp.MatchString(`[1-9]\d{3}/\d{2}`, selectedList.Title)
+		if !matchRegex {
+			fmt.Printf("Expected a list with title matching 'yyyy/mm', got: [%s]\n", selectedList.Title)
+			os.Exit(1)
+		}
+
+		//filmsForList := mubi.FilmsInList(selectedList)
+		//for _, film := range filmsForList {
+		//	fmt.Println(film.Title)
+		//}
+		//
+		//watchedDate := selectedList.Title[0:4] + "-" + selectedList.Title[5:7] + "-01"
+		//letterboxd.CreateCsvImport(filmsForList, watchedDate)
 	},
 }
 
@@ -45,7 +80,6 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-// TODO -> "mubi-to-letterboxd-lists" cmd (https://dev.to/divrhino/building-an-interactive-cli-app-with-go-cobra-promptui-346n)
 func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -54,11 +88,5 @@ func init() {
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.filmbro.yaml)")
 
 	rootCmd.AddCommand(listCmd)
-	listCmd.PersistentFlags().IntVar(&flags.MubiUserId, "user", -1, "MUBI user id")
 	listCmd.PersistentFlags().StringVar(&flags.MubiUserCountry, "country", "GB", "Country code")
-	//err := listCmd.MarkFlagRequired("user")
-	//if err != nil {
-	//	fmt.Printf("Input error: [%s]", err)
-	//	os.Exit(1)
-	//}
 }

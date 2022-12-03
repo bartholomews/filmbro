@@ -1,12 +1,19 @@
 package mubi
 
+type Metadata struct {
+	CurrentPage int `json:"current_page"`
+	NextPage    int `json:"next_page"`
+	TotalCount  int `json:"total_count"`
+}
+
 type User struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 type UserLists struct {
-	Lists []List `json:"lists"`
+	Lists []List   `json:"lists"`
+	Meta  Metadata `json:"meta"`
 }
 
 type List struct {
@@ -16,8 +23,8 @@ type List struct {
 }
 
 type Film struct {
-	id            int
-	title         string
-	originalTitle string
-	year          int
+	Id            int    `json:"id"`
+	Title         string `json:"title"`
+	OriginalTitle string `json:"original_title"`
+	Year          int    `json:"year"`
 }
