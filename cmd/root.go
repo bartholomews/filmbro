@@ -7,10 +7,9 @@ package cmd
 import (
 	"fmt"
 	"github.com/bartholomews/filmbro/flags"
+	"github.com/bartholomews/filmbro/letterboxd"
 	"github.com/bartholomews/filmbro/mubi"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
-	"os"
 	"regexp"
 )
 
@@ -35,42 +34,55 @@ var rootCmd = &cobra.Command{
 	//},
 }
 
-var listCmd = &cobra.Command{
-	Use:   "lists",
-	Short: "Show mubi lists",
+var mubiDiaryToLetterboxdCmd = &cobra.Command{
+	Use:   "mubi-diary-to-letterboxd",
+	Short: "Create a Letterboxd csv importer file with Diary entries from Mubi lists with titles matching 'yyyy/mm'",
 	Run: func(cmd *cobra.Command, args []string) {
 		flags.MubiUserId = promptInt(promptContent{
 			"Invalid entry: you can find it in the browser console after you login.",
 			"Please provide your Mubi user id",
 		})
-		lists := mubi.Lists()
-		var listStr []string
-		for _, e := range lists {
-			listStr = append(listStr, e.Title)
+
+		user := mubi.GetUser()
+		lists := mubi.UserLists()
+
+		var diaryLists []mubi.List
+		for _, maybeDiaryList := range lists {
+			isDiaryList, _ := regexp.MatchString(`[1-9]\d{3}/\d{2}`, maybeDiaryList.Title)
+			if isDiaryList {
+				diaryLists = append(diaryLists, maybeDiaryList)
+			}
 		}
 
-		pr := promptui.Select{
-			Label: "Please select a list of the form 'yyyy/mm' in order to create a Letterboxd importer for Diary entries:",
-			Items: listStr,
+		var diaryEntries []mubi.DiaryEntry
+
+		fmt.Printf("Found %d Mubi lists for user [%s]\n", len(lists), user.Name)
+		fmt.Printf("Found %d 'Diary lists'\n", len(diaryLists))
+
+		if len(diaryLists) > 0 {
+
+			fmt.Println("Retrieving all user ratings...")
+			ratingsLookup := mubi.GetAllRatingsForUser()
+			fmt.Printf("Retrieved %d user ratings\n", len(ratingsLookup))
+
+			for _, diaryList := range diaryLists {
+				watchedDate := diaryList.Title[0:4] + "-" + diaryList.Title[5:7] + "-01"
+				filmsForList := mubi.FilmsInList(diaryList)
+				for _, film := range filmsForList {
+					var rating *int
+					var maybeRating, hasRating = ratingsLookup[film.Id]
+					if hasRating {
+						rating = &maybeRating
+					}
+					diaryEntries = append(diaryEntries, mubi.DiaryEntry{
+						Film: film, WatchedDate: watchedDate, Rating: rating,
+					})
+				}
+			}
+
+			fmt.Println(diaryEntries)
+			letterboxd.CreateCsvImport(diaryEntries)
 		}
-
-		index, _, err := pr.Run()
-		cobra.CheckErr(err)
-
-		selectedList := lists[index]
-		matchRegex, _ := regexp.MatchString(`[1-9]\d{3}/\d{2}`, selectedList.Title)
-		if !matchRegex {
-			fmt.Printf("Expected a list with title matching 'yyyy/mm', got: [%s]\n", selectedList.Title)
-			os.Exit(1)
-		}
-
-		//filmsForList := mubi.FilmsInList(selectedList)
-		//for _, film := range filmsForList {
-		//	fmt.Println(film.Title)
-		//}
-		//
-		//watchedDate := selectedList.Title[0:4] + "-" + selectedList.Title[5:7] + "-01"
-		//letterboxd.CreateCsvImport(filmsForList, watchedDate)
 	},
 }
 
@@ -87,6 +99,6 @@ func init() {
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.filmbro.yaml)")
 
-	rootCmd.AddCommand(listCmd)
-	listCmd.PersistentFlags().StringVar(&flags.MubiUserCountry, "country", "GB", "Country code")
+	rootCmd.AddCommand(mubiDiaryToLetterboxdCmd)
+	mubiDiaryToLetterboxdCmd.PersistentFlags().StringVar(&flags.MubiUserCountry, "country", "GB", "Country code")
 }

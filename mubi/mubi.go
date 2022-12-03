@@ -6,6 +6,7 @@ import (
 	"github.com/bartholomews/filmbro/flags"
 	"github.com/spf13/cobra"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -19,15 +20,8 @@ func getRequest(url string) *http.Response {
 	return res
 }
 
-func Lists() []List {
-	var user = getUser()
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+func UserLists() []List {
 	var userListsResponse = getUserLists()
-	fmt.Printf("I found %d Mubi lists for %s:\n", userListsResponse.Meta.TotalCount, user.Name)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-	//for i, list := range userListsResponse.Lists {
-	//	fmt.Printf("%02d. %s\n", i + 1, list.Title)
-	//}
 	return userListsResponse.Lists
 }
 
@@ -39,11 +33,50 @@ func FilmsInList(list List) []Film {
 	return films
 }
 
+func GetAllRatingsForUser() RatingsLookup {
+	ratingsLookup := RatingsLookup{}
+
+	getRatings := func(endpoint string) UserRatings {
+		fmt.Printf("Calling [%s]\n", endpoint)
+		res := getRequest(endpoint)
+		var userRatingsResponse UserRatings
+
+		err := json.NewDecoder(res.Body).Decode(&userRatingsResponse)
+		fmt.Println(userRatingsResponse)
+		if err != nil {
+			fmt.Printf("Something went wrong while getting ratings: [%s]", err)
+			os.Exit(1)
+		}
+
+		for _, rating := range userRatingsResponse.Ratings {
+			ratingsLookup[rating.FilmId] = rating.Stars
+		}
+		fmt.Printf("Got [%d] results\n", len(userRatingsResponse.Ratings))
+		fmt.Printf("RatingsLookup is now [%d]\n", len(ratingsLookup))
+		return userRatingsResponse
+	}
+
+	var cursorParam = ""
+	for {
+		var endpoint = fmt.Sprintf("%s/ratings?per_page=25%s", userEndpoint(), cursorParam)
+		rating := getRatings(endpoint)
+		// FIXME[FB] Find out why the second call is always empty
+		//  The cursor from first call is suspiciously large (e.g. 824636555976 vs from ui is like 24836661)
+		if rating.Meta.NextCursor == nil {
+			break
+		}
+		fmt.Printf("Next cursor is [%d]\n", rating.Meta.NextCursor)
+		cursorParam = fmt.Sprintf("&before=%d", rating.Meta.NextCursor)
+	}
+
+	return ratingsLookup
+}
+
 func userEndpoint() string {
 	return "https://api.mubi.com/v3/users/" + strconv.Itoa(flags.MubiUserId)
 }
 
-func getUser() User {
+func GetUser() User {
 	res := getRequest(userEndpoint())
 	var user User
 	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&user))
@@ -57,10 +90,10 @@ func getFilm(id int) Film {
 	return filmResponse
 }
 
-func getUserLists() UserLists {
+func getUserLists() UserListsResponse {
 	var endpoint = fmt.Sprintf("%s/lists?per_page=100", userEndpoint())
 	res := getRequest(endpoint)
-	var userListsResponse UserLists
+	var userListsResponse UserListsResponse
 	cobra.CheckErr(json.NewDecoder(res.Body).Decode(&userListsResponse))
 	return userListsResponse
 }
